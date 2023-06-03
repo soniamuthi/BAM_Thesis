@@ -9,7 +9,10 @@ library(MuMIn)
 library(stargazer)
 library(rsq)
 
+# import dataset
 df_position <- read_csv("df_position.csv")
+
+# pre-processing
 df_positions <- df_position[,-1]
 
 df_positions$TeamName <- as.factor(df_positions$TeamName)
@@ -23,6 +26,7 @@ df_positions <- df_positions[,-4]
 
 df_positions$GridPosition[df_positions$GridPosition == 0] <- 20
 
+# subset before and after
 df_0_try <- subset(df_positions, Year %in% c(2019, 2020))
 df_1_try <- subset(df_positions, Year %in% c(2021, 2022))
 
@@ -32,7 +36,7 @@ df_1_try  <- df_1_try [,-4]
 
 # Dominance Analysis
 
-# specify categories
+# specify categories of features
 driver <- c('GridPosition' ,' AverageSpeed'  , 'AverageThrottle' , 'Brake' , 'driverIssue', "AgeAtGP", 'SDLapTime', 'BestQualiTime', 'MaxThrottlePct')
 car <- c('MaxRPM' , 'carIssue' , 'TeamName' , 'AvgPitTime' , 'PitstopNo', 'Engine', 'HARD', 'INTERMEDIATE', 'MEDIUM', 'SOFT', 'WET', 'MaxSpeed')
 other <- c("CircuitType", 'Rain')
@@ -101,7 +105,10 @@ stargazer(model_before, model_after, type = "latex", font.size = 'small', column
 
 # Robustness check
 
+# import data
 df_points <- read_csv("df_points.csv")
+
+# pre-processing
 df_points <- df_points[,-1]
 
 df_points$GridPosition[df_points$GridPosition == 0] <- 20
@@ -115,18 +122,19 @@ df_points$Rain <- as.numeric(df_points$Rain)
 df_points <- df_points[,-1]
 df_points <- df_points[,-4]
 
+# subset before and after
 df_0_try <- subset(df_points, Year %in% c(2019, 2020))
 df_1_try <- subset(df_points, Year %in% c(2021, 2022))
 
 
-
+# baseline models
 model_before <- lmer(Points ~ GridPosition + FLap + AverageSpeed +  
                        AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_0_try)
 
 model_after <- lmer(Points ~ GridPosition + FLap + AverageSpeed +  
                       AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_1_try)
 
-
+# R2
 r.squaredGLMM(model_before, rft = "marginal")
 r.squaredGLMM(model_after, rft = "marginal")
 
