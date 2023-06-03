@@ -1,0 +1,238 @@
+library(readr)
+library(dplyr)
+library(lme4)
+library(stringr)
+
+
+
+# LATEST TRIAL
+df_position <- read_csv("df_position.csv")
+df_positions <- df_position[,-1]
+
+df_positions$TeamName <- as.factor(df_positions$TeamName)
+df_positions$raceID <- as.factor(df_positions$raceID)
+df_positions$CircuitType <- as.factor(df_positions$CircuitType)
+df_positions$Engine <- as.factor(df_positions$Engine)
+df_positions$Rain <- as.numeric(df_positions$Rain)
+
+df_positions <- df_positions[,-1]
+df_positions <- df_positions[,-4]
+
+df_positions$GridPosition[df_positions$GridPosition == 0] <- 20
+
+df_0_try <- subset(df_positions, Year %in% c(2019, 2020))
+df_1_try <- subset(df_positions, Year %in% c(2021, 2022))
+
+
+df_0_try  <- df_0_try [,-4]
+df_1_try  <- df_1_try [,-4]
+
+auxi <- df_positions[1:50,]
+
+# DOMINANCE ANALYSIS TEAM
+my_formula_try <- formula(Position ~ HARD + INTERMEDIATE + MEDIUM + SOFT + WET + MaxSpeed + MaxRPM + carIssue + TeamName + Engine + AvgPitTime + PitstopNo)
+domin(my_formula_try, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      consmodel = "(1 | raceID)")
+
+my_formula_try <- formula(Position ~ HARD + INTERMEDIATE + MEDIUM + SOFT + WET + MaxSpeed + MaxRPM + carIssue + TeamName + Engine + AvgPitTime + PitstopNo)
+domin(my_formula_try, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_1_try, 
+      consmodel = "(1 | raceID)")
+
+
+# Both
+my_formula_try_both <- formula(Position ~ HARD + INTERMEDIATE + MEDIUM + SOFT + WET + MaxSpeed + MaxRPM + carIssue + TeamName + Engine + AvgPitTime + PitstopNo + GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue + AvgLapTime + SDLapTime + AvgSplitTime)
+domin(my_formula_try_both, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      consmodel = "(1 | raceID)")
+
+
+
+
+
+# DOMINANCE ANALYSIS DRIVER
+domin(my_formula_d, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      consmodel = "(1 | raceID)")
+
+domin(my_formula_d, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_1_try, 
+      consmodel = "(1 | raceID)")
+
+library(lme4)
+model <- lmer(Position ~ GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue + AvgLapTime + SDLapTime + AvgSplitTime + HARD + INTERMEDIATE + MEDIUM + SOFT + TeamName + Engine + AvgPitTime + PitstopNo + (1|raceID), data = df_0_try)
+summary(model)
+
+library(lmerTest)
+anova(model)
+
+formula_all <- Position ~ GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue + AvgLapTime + SDLapTime + AvgSplitTime + HARD + INTERMEDIATE + MEDIUM + SOFT + TeamName + Engine + AvgPitTime + PitstopNo + Rain + CircuitType_street
+
+domin(formula_all, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      consmodel = "(1 | raceID)")
+
+
+library(foreach)
+library(doParallel)
+
+# Set up parallel backend with 4 cores
+cl <- makeCluster(4)
+registerDoParallel(cl)
+
+# Define your formula
+formula_all <- Position ~ GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue + AvgLapTime + SDLapTime + AvgSplitTime + HARD + INTERMEDIATE + MEDIUM + SOFT + TeamName + Engine + AvgPitTime + PitstopNo + Rain + CircuitType_street
+
+formula_all2 <- Position ~ GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue 
+
+
+
+# Load required packages and functions in the parallel workers
+clusterEvalQ(cl, {
+  library(domir) # load MuMIn package
+  domin <- domir::domin # load domin function
+  library(lme4)
+  lmer <- lme4::lmer
+})
+
+# Define your formula
+formula_all <- Position ~ GridPosition + AgeAtGP + BestQualiTime + FLap + AverageSpeed + AverageRPM + AverageThrottle + MaxThrottlePct + Brake + driverIssue + AvgLapTime + SDLapTime + AvgSplitTime + HARD + INTERMEDIATE + MEDIUM + SOFT + TeamName + Engine + AvgPitTime + PitstopNo + Rain + CircuitType_street
+
+# Use foreach to run domin in parallel
+results <- foreach(i = 1:nrow(df_0_try), .combine = rbind) %dopar% {
+  domin(formula_all2, lmer, list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), data = df_0_try[i,], consmodel = "(1 | raceID)")
+}
+
+library(dominanceanalysis)
+# Stop the parallel backend
+stopCluster(cl)
+
+
+# FINAAAAAL
+library(domir)
+driver <- c('GridPosition' ,' AverageSpeed'  , 'AverageThrottle' , 'Brake' , 'driverIssue', "AgeAtGP", 'SDLapTime', 'BestQualiTime', 'MaxThrottlePct')
+car <- c('MaxRPM' , 'carIssue' , 'TeamName' , 'AvgPitTime' , 'PitstopNo', 'Engine', 'HARD', 'INTERMEDIATE', 'MEDIUM', 'SOFT', 'WET', 'MaxSpeed')
+other <- c("CircuitType", 'Rain')
+
+f <- Position ~ GridPosition + FLap + AverageSpeed +  
+  AverageThrottle + Brake + driverIssue + SDLapTime + AvgSplitTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT
+
+domin(Position ~ 1, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      sets = list(driver,car, other),
+      consmodel = "(1 | raceID)")
+
+domin(Position ~ 1, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_1_try, 
+      sets = list(driver,car, other),
+      consmodel = "(1 | raceID)")
+
+# RELAIMPO
+install.packages("relaimpo")
+library(relaimpo)
+
+
+library(lme4)
+
+librmodel_before <- lmer(Position ~ GridPosition + FLap + AverageSpeed +  
+                AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_0_try)
+summary(model_before)
+
+r.squaredGLMM(model_before)
+
+model_after <- lmer(Position ~ GridPosition + FLap + AverageSpeed +  
+                AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_1_try)
+summary(model)
+library(stargazer)
+stargazer(model_before, type = "latex", font.size = 'small', single.row = TRUE, column.sep.width = "1pt")
+
+stargazer(model_after, type = "latex", font.size = 'small', single.row = TRUE, column.sep.width = "1pt")
+
+library(rsq)
+r.squaredGLMM(model_before, rft = "marginal")
+r.squaredGLMM(model_after, rft = "marginal")
+
+model_after <- lmer(Position ~ GridPosition + FLap + AverageSpeed +  
+                      AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_1_try)
+summary(model)
+
+stargazer(model_after, type = "latex")
+
+
+
+
+#### Robustness check
+
+df_points <- read_csv("df_points.csv")
+df_points <- df_points[,-1]
+
+df_points$TeamName <- as.factor(df_points$TeamName)
+df_points$raceID <- as.factor(df_points$raceID)
+df_points$CircuitType <- as.factor(df_points$CircuitType)
+df_points$Engine <- as.factor(df_points$Engine)
+df_points$Rain <- as.numeric(df_points$Rain)
+
+df_points <- df_points[,-1]
+df_points <- df_points[,-4]
+
+df_0_try <- subset(df_points, Year %in% c(2019, 2020))
+df_1_try <- subset(df_points, Year %in% c(2021, 2022))
+
+
+
+library(lme4)
+
+model_before <- lmer(Points ~ GridPosition + FLap + AverageSpeed +  
+                       AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_0_try)
+summary(model_before)
+
+r.squaredGLMM(model_before)
+
+model_after <- lmer(Position ~ GridPosition + FLap + AverageSpeed +  
+                      AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_1_try)
+summary(model)
+library(stargazer)
+stargazer(model_before, type = "latex", font.size = 'small', single.row = TRUE, column.sep.width = "1pt")
+
+stargazer(model_after, type = "latex", font.size = 'small', single.row = TRUE, column.sep.width = "1pt")
+
+library(rsq)
+r.squaredGLMM(model_before, rft = "marginal")
+r.squaredGLMM(model_after, rft = "marginal")
+
+model_after <- lmer(Position ~ GridPosition + FLap + AverageSpeed +  
+                      AverageThrottle + Brake + driverIssue + SDLapTime + AvgPitTime + PitstopNo + MaxRPM + carIssue + TeamName + Engine + HARD + INTERMEDIATE + MEDIUM + SOFT + (1|raceID), data = df_1_try)
+summary(model)
+
+stargazer(model_after, type = "latex")
+
+domin(Points ~ 1, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_0_try, 
+      sets = list(driver,car, other),
+      consmodel = "(1 | raceID)")
+
+domin(Points ~ 1, 
+      lmer, 
+      list(\(x) list(R2m = MuMIn::r.squaredGLMM(x)[[1]]), "R2m"), 
+      data = df_1_try, 
+      sets = list(driver,car, other),
+      consmodel = "(1 | raceID)")
