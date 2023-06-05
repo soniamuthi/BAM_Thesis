@@ -23,5 +23,7 @@ The structure of the repository is as follows:
 - robustness_subset.ipynb            # Robustness check MERF XGBoost model with different outcome variable on a subset
 
 
-It is important to note that the initial data extraction in the "Retrieve Data" folder was performed locally using cache memory. Due to the large size of the files, the intermediary data was not uploaded to the repository. Therefore, the paths in the code refer to local paths. The code has been provided for the purpose of reproducibility, but the final datasets have been uploaded separately as follows: "2019data.csv," "2020data.csv," "2021data.csv," and "2022data.csv."
+It is important to note that the initial data extraction in the "Retrieve Data" folder was performed locally using cache memory. Due to the large size of the files, the intermediary data was not uploaded to the repository. Therefore, the paths in the code refer to local paths. The code has been provided for the purpose of reproducibility, but the pre-final datasets have been uploaded separately as follows: "2019data.csv," "2020data.csv," "2021data.csv," and "2022data.csv." The final dataset that can be used to run the models is "mergedData.csv".
+
+The final chosen model and the corresponding feature importance analysis can be found under "merf-xgboost_2models.ipynb" file.
 
